@@ -12,7 +12,6 @@ module Projects
     # -- all .rb files in that directory are automatically loaded.
     config.generators do |g|
       g.test_framework :rspec,
-        fixtures: false,
         view_specs: false,
         controller_specs: false,
         helper_specs: false,
