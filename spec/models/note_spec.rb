@@ -1,76 +1,54 @@
 require 'rails_helper'
 
-RSpec.describe Note, type: :model do
-
-  it "generates associated data from a factory 预构件测试" do
-    note = FactoryBot.create(:note)
-    # puts "This note's project is #{note.project.inspect}"
-    # puts "This note's user is #{note.user.inspect}"
-  end
-
-  before :each do
-    @user = User.create(
-        first_name: "Michael",
-        last_name: "Lin",
-        email: "jie7206@qq.com",
-        password: "123456"
-      )
-    @project = @user.projects.create(
-        name: "Test Project"
-      )    
-  end
-
-  describe "initialize" do
-
-    it "is valid with a user, project, and message 必须要有用户,项目和内容" do
-      note = Note.new(
+RSpec.describe Note, "项目记录模型测试", type: :model do
+  Given(:user) { FactoryBot.create(:user) }
+  Given(:project) { FactoryBot.create(:project) }
+  describe "模型基本测试" do
+    context "预构件测试" do
+      When(:note) { FactoryBot.create(:note) }
+      Then { note.should be_valid }
+    end
+    context "记录必须要有用户,项目和内容" do
+      When(:note) { Note.new(
           message: "This is a sample note.",
-          user: @user,
-          project: @project
-        )
-      expect(note).to be_valid
+          user: user,
+          project: project
+        ) }
+      Then { note.should be_valid }
     end
-
-    it "is invalid without a message 不允许内容为空" do
-      note = Note.new(
+    context "记录不允许内容为空" do
+      When(:note) { Note.new(
           message: nil,
-          user: @user,
-          project: @project
-        )
-      expect(note).not_to be_valid
+          user: user,
+          project: project
+        ) }
+      Then { note.should_not be_valid }
     end
-
   end
-
-  describe "search message for a term" do
-
-    before :each do
-      @note1 = @project.notes.create(
+  describe "搜寻记录中的关键字" do
+    Given(:note1) do
+      project.notes.create(
           message: "This is a first note.",
-          user: @user
-        )
-      @note2 = @project.notes.create(
+          user: user
+      )
+    end
+    Given(:note2) do
+      project.notes.create(
           message: "This is a second note.",
-          user: @user
-        )
-      @note3 = @project.notes.create(
+          user: user
+      )
+    end
+    Given(:note3) do
+      project.notes.create(
           message: "This is a third note from first.",
-          user: @user
-        )      
+          user: user
+      )
     end
-
-    context "when a match is found" do
-      it "returns notes that match the search term 返回符合搜寻条件的note" do
-        expect(Note.search("first")).to include @note1, @note3
-      end    
+    context "当找到匹配的关键字则返回符合搜寻条件的记录" do
+      Then { Note.search("first").should include note1, note3 }
     end
-
-    context "when no match is found" do
-      it "returns an empty collection 返回空集合" do
-        expect(Note.search("message")).to be_empty
-      end    
+    context "当找不到匹配的关键字则返回空集合" do
+      Then { Note.search("message").should be_empty }
     end
-
   end
-
 end

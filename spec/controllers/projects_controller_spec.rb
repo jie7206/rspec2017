@@ -1,101 +1,106 @@
 require 'rails_helper'
 
-RSpec.describe ProjectsController, type: :controller do
-
-  describe "index" do
-    context "as a authenticated user" do
-      before do
-        @user = FactoryBot.create(:user)
+RSpec.describe ProjectsController, "项目功能测试",type: :controller do
+  describe "显示项目首页" do
+    context "作为拥有者" do
+      Given(:user) { FactoryBot.create(:user) }
+      context "成功显示首页" do
+        When { 
+          sign_in user
+          get :index
+        }
+        Then { response.should be_success }
       end
-      it "responds successfully 显示首页" do
-        sign_in @user
-        get :index
-        expect(response).to be_success
-      end
-      it "returns a 200 response 显示200回传码" do
-        sign_in @user
-        get :index
-        expect(response).to have_http_status "200"
+      context "首页显示200回传码" do
+        When { 
+          sign_in user
+          get :index
+        }
+        Then { response.should have_http_status "200" }
       end
     end
-    context "as a guest" do
-      it "returns a 302 response 显示302回传码" do
-        get :index
-        expect(response).to have_http_status "302"
+    context "作为访客" do
+      context "首页显示302回传码" do
+        When { get :index }
+        Then { response.should have_http_status "302" }
       end
-      it "redirects to the sign-in page 跳转到登入页" do
-        get :index
-        expect(response).to redirect_to "/users/sign_in"
+      context "能自动跳转到登入页" do
+        When { get :index }
+        Then { response.should redirect_to "/users/sign_in" }
       end
     end
   end
-
-  describe "show" do
-    context "as an authenticated user" do
-      before do
-        @user = FactoryBot.create(:user)
-        @project = FactoryBot.create(:project, owner: @user)
-      end
-      it "responds successfully 正常显示" do
-        sign_in @user
-        get :show, params: {id: @project.id}
-        expect(response).to be_success
+  describe "显示某个项目" do
+    Given(:user) { FactoryBot.create(:user) }
+    context "作为拥有者" do
+      Given(:project) { FactoryBot.create(:project, owner: user) }
+      context "能正常显示某个项目" do
+        When {
+          sign_in user
+          get :show, params: {id: project.id}
+        }
+        Then { response.should be_success }
       end
     end
-    context "as an unauthenticated user" do
-      before do
-        @user = FactoryBot.create(:user)
-        other_user = FactoryBot.create(:user)
-        @project = FactoryBot.create(:project, owner: other_user)
-      end
-      it "redirects to the dashboard 跳转到根页面" do
-        sign_in @user
-        get :show, params: {id: @project.id}
-        expect(response).to redirect_to root_path
+    context "作为访客" do
+      Given(:other_user) { FactoryBot.create(:user) }
+      Given(:project) { FactoryBot.create(:project, owner: other_user) }
+      context "自动跳转到根页面" do
+        When {
+          sign_in user
+          get :show, params: {id: project.id}
+        }
+        Then { response.should redirect_to root_path }
       end
     end    
   end
-
-  describe "create" do
-    context "as an authenticated user" do
-      before do
-        @user = FactoryBot.create(:user)
-      end
-      it "adds a project 新增项目" do
-        project_params = FactoryBot.attributes_for(:project)
-        sign_in @user
-        expect {
+  describe "创建新的项目" do
+    Given(:project_params) { FactoryBot.attributes_for(:project) }
+    context "作为拥有者" do
+      Given(:user) { FactoryBot.create(:user) }
+      context "能成功建立项目" do
+        When(:projects_count_change) {
+          sign_in user
+          projects_count_1 = user.projects.count
           post :create, params: {project: project_params}
-        }.to change(@user.projects, :count).by 1
+          user.projects.count - projects_count_1
+        }
+        Then { projects_count_change.should eq 1 }
       end
     end
-    context "as a guest" do
-      it "returns a 302 response 回传302" do
-        project_params = FactoryBot.attributes_for(:project)
-        post :create, params: {project: project_params}
-        expect(response).to have_http_status "302"
+    context "作为访客" do
+      context "回传302" do
+        When { post :create, params: {project: project_params} }
+        Then { response.should have_http_status "302" }
       end
-      it "redirects to the sign-in page 跳转到登入页" do
-        project_params = FactoryBot.attributes_for(:project)
-        post :create, params: {project: project_params}
-        expect(response).to redirect_to "/users/sign_in"
-      end
-    end
-  end
-
-  describe "update" do
-    context "as an authenticated user" do
-      before do
-        @user = FactoryBot.create(:user)
-        @project = FactoryBot.create(:project, owner: @user)
-      end
-      it "updates a project name 更新项目名称" do
-        project_params = FactoryBot.attributes_for(:project, name: "New Project Name")
-        sign_in @user
-        patch :update, params: {id: @project.id, project: project_params}
-        expect(@project.reload.name).to eq "New Project Name"
+      context "自动跳转到登入页" do
+        When { post :create, params: {project: project_params} }
+        Then { response.should redirect_to "/users/sign_in" }
       end
     end
   end
-
+  describe "更新某个项目" do
+    Given(:user) { FactoryBot.create(:user) }
+    Given(:project) { FactoryBot.create(:project, owner: user) }
+    Given(:project_with_new_attribute) { FactoryBot.attributes_for(:project, name: "New Project Name") }
+    context "作为拥有者" do
+      context "能成功更新项目名称" do
+        When {
+          sign_in user
+          patch :update, params: {id: project.id, project: project_with_new_attribute}
+        }
+        Then { project.reload.name.should eq "New Project Name" }
+      end
+    end
+    context "作为访客" do
+      context "回传302" do
+        When { patch :update, params: {id: project.id, project: project_with_new_attribute} }
+        Then { response.should have_http_status "302" }
+      end
+      context "自动跳转到登入页" do
+        When { patch :update, params: {id: project.id, project: project_with_new_attribute} }
+        Then { response.should redirect_to "/users/sign_in" }
+      end
+    end
+  end
 end
